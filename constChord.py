@@ -1,0 +1,6 @@
+LOOKUP_REQ = '1'
+LOOKUP_REP = '2'
+CONNECT    = '3'
+ANNOUNCE   = '5'
+STOP       = '6'
+DONE = '7'
