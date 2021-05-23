@@ -2,14 +2,15 @@ import random
 import pickle
 import threading
 from constServer import *
-import socket, sys
+import socket, sys, argparse
 
 
 class Server():
 
-    def __init__(self, nBits=5, hostIP='localhost', portNo=8080):
+    def __init__(self, nBits=5, portNo=8080):
+        host = '0.0.0.0'
         self.socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        self.socket.bind((hostIP, portNo))
+        self.socket.bind((host, portNo))
 
         self.members = {}
         self.addresses = {}
@@ -37,7 +38,7 @@ class Server():
         assert pid in self.members['members'], ''
         self.members[subgroup].remove(pid)
         self.members['members'].remove(pid)
-        return
+
 
     def exists(self, pid):
         return pid in self.members['members']
@@ -61,6 +62,7 @@ class Server():
             if command == JOIN:
                 pid = self.join(message)
                 self.pid[node] = pid
+                print(f'Server: node {node} has joined with id {pid}')
                 conn.send(pickle.dumps(pid))
             elif command == LEAVE:
                 pid = self.pid[node]
@@ -78,8 +80,9 @@ class Server():
             elif command == BIND:
                 pid = self.pid[node]
                 self.bind(message, pid)
-                #print(f'binded {pid} to {msg}')
+                print(f'Server: node {node} binded to address {message}')
             elif command == ADDRESS:
+                print(f'Server: Asked for address of node {message}')
                 conn.send(pickle.dumps(self.addresses[message]))
             elif command == DISCONNECT:
                 conn.close()
@@ -94,56 +97,15 @@ class Server():
 
 
 
-
-
-
-
-    '''
-    def sendTo(self, destinationSet, message, caller):
-        caller = self.pid[caller]
-        assert caller in self.members['members'], ''
-        for i in destinationSet:
-            assert str(i) in self.members['members'], ''
-            self.channel.rpush(f'{str(caller)}:{str(i)}', pickle.dumps(message))
-
-    def sendToAll(self, message):
-        caller = self.osmembers[os.getpid()]
-        assert self.channel.sismember('members', str(caller)), ''
-        for i in [int(j) for j in self.channel.smembers('members')]:
-            self.channel.rpush(f'{str(caller)}:{str(i)}', pickle.dumps(message))
-
-    def recvFromAny(self, timeout=0):
-        caller = self.osmembers[os.getpid()]
-        assert self.channel.sismember('members', str(caller)), ''
-        members = [int(i) for i in self.channel.smembers('members')]
-        xchan = [f'{str(i)}:{str(caller)}' for i in members]
-        msg = self.channel.blpop(xchan, timeout)
-        if msg:
-            #print(msg[0].decode())
-            #x = msg[0].split("'")[1]
-            #y = pickle.loads(msg[1])
-            return [msg[0].decode().split(":")[0], pickle.loads(msg[1])]
-
-    def recvFrom(self, senderSet, timeout=0):
-        caller = self.osmembers[os.getpid()]
-        assert self.channel.sismember('members', str(caller)), ''
-        for i in senderSet:
-            assert self.channel.sismember('members', str(i)), ''
-        xchan = [f'{str(i)}:{str(caller)}' for i in senderSet]
-        msg = self.channel.blpop(xchan, timeout)
-        if msg:
-            return [msg[0].decode().split(":")[0], pickle.loads(msg[1])]
-    '''
-
-
 if __name__ == '__main__':
-    host, port = sys.argv[1].split(':')
-    port = int(port)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', default=8080, required=False, type=int, help='Server incoming communications port')
+    parser.add_argument('--bits', default=5, required=False, type=int, help='Number of chord bits')
+    args = parser.parse_args()
 
-    bits = 5
-    if len(sys.argv) > 2:
-        bits = sys.argv[2]
+    port = args.port
+    bits = args.bits
 
-    server = Server(nBits=bits, hostIP=host, portNo=port)
+    server = Server(nBits=bits, portNo=port)
     server.run()
 
